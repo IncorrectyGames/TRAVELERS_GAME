@@ -1,0 +1,13 @@
+@font-face {
+    font-family: 'AnotherTag';
+    src: url('./AnotherTag-2Onm8.otf') format('opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.centered-custom-text {
+    font-family: 'AnotherTag', cursive, sans-serif;
+    text-align: center;
+    margin-top: 24px;
+    font-size: 2rem;
+}

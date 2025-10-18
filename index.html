@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TRAVELERS_GAME — punk sandbox open source</title>
+  <meta name="description" content="TRAVELERS_GAME: sandbox punk open source su nomadismo, occupazioni, TAZ, freeparty e manifestazioni. Videogioco-documentario in sviluppo." />
+  <style>
+    /* ------------------------------ */
+    /* PUNK THEME — NO EXTERNAL CSS   */
+    /* ------------------------------ */
+    :root{
+      --bg: #0b0b0b;
+      --ink: #f4f4f4;
+      --acid: #8fff00;     /* neon green */
+      --hot: #ff3b3b;      /* hot red */
+      --vio: #a200ff;      /* purple */
+      --wire: #00e5ff;     /* cyan */
+      --paper: #111;
+      --muted: #cfcfcf;
+      --shadow: rgba(0,0,0,.5);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height:1.25; overflow-x:hidden;
+    }
+
+    body > * { position: relative; z-index: 1; }
+
+    /* noisy animated background */
+    .bg-noise{position:fixed; inset:0; pointer-events:none; mix-blend-mode:screen; opacity:.07;}
+    .bg-noise::before{
+      content:""; position:absolute; inset:-50%;
+      background: repeating-conic-gradient(from 0deg, #000 0 2px, #fff 2px 4px);
+      filter: contrast(300%) brightness(80%);
+      animation: spin 30s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(1turn)}}
+
+    /* scanlines + flicker */
+    .scan{position:fixed; inset:0; pointer-events:none; background: repeating-linear-gradient( to bottom, rgba(255,255,255,.07), rgba(255,255,255,.07) 1px, transparent 1px, transparent 3px ); mix-blend-mode:overlay; animation: flicker 6s infinite steps(2,end);} 
+    @keyframes flicker{ 0%,19%,21%,23%,80%,100%{opacity:.12} 20%,22%{opacity:.05} }
+
+    /* layout */
+    header{position:relative; z-index:2; padding:24px 18px 0;}
+    nav{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+    .tag{font-size:12px; letter-spacing:.12em; padding:6px 10px; border:1px dashed var(--ink); text-transform:uppercase}
+  .lang-switch{margin-left:auto; display:flex; gap:8px; align-items:center}
+  .lang-switch a{color:var(--acid); text-decoration:none; font-weight:900; border:1px dashed rgba(143,255,0,0.15); padding:6px 8px; border-radius:4px; position:relative}
+  .lang-switch a:hover{background:rgba(143,255,0,0.06)}
+
+  /* Active language visual - acid green neon tube that fits the dark theme */
+  .lang-switch a.active{
+    color: #071000; /* almost black for contrast on neon */
+    background: linear-gradient(90deg, rgba(143,255,0,1), rgba(143,255,0,0.9));
+    padding:8px 10px; /* slightly larger to resemble a pill */
+    border-radius:6px;
+    box-shadow: 0 6px 20px rgba(143,255,0,0.08), 0 0 28px rgba(143,255,0,0.14), inset 0 0 8px rgba(0,0,0,0.45);
+    border: 1px solid rgba(143,255,0,0.28);
+    transform: translateY(-2px);
+    transition: transform .18s ease, box-shadow .18s ease;
+    position:relative;
+    overflow:visible;
+    font-weight:900;
+  }
+  /* inner neon tube effect */
+  .lang-switch a.active::before{
+    content:''; position:absolute; inset:2px; border-radius:5px; pointer-events:none; box-shadow: 0 0 24px rgba(143,255,0,0.45), 0 0 48px rgba(143,255,0,0.12); opacity:0.95; mix-blend-mode:screen;
+  }
+  /* animated thin glowing underline (tube-like) */
+  .lang-switch a.active::after{
+    content:''; position:absolute; left:12%; right:12%; bottom:-8px; height:6px; border-radius:4px; background: linear-gradient(90deg, rgba(143,255,0,1), rgba(200,255,120,0.9)); box-shadow: 0 6px 22px rgba(143,255,0,0.25), 0 0 14px rgba(143,255,0,0.25); transform:scaleX(.96); animation: acidUnderline 1.8s ease-in-out infinite;
+  }
+  @keyframes acidUnderline{ 0%{transform:scaleX(.92); opacity:.85} 50%{transform:scaleX(1.02); opacity:1} 100%{transform:scaleX(.95); opacity:.9} }
+
+    .hero{position:relative; z-index:1; padding:40px 18px 24px;}
+    .title{font-weight:900; font-size: clamp(36px, 8vw, 96px); line-height:.9; text-transform:uppercase; letter-spacing:.02em;}
+    .title .sticker{display:inline-block; transform:rotate(-2deg); background:var(--acid); color:#000; padding:.05em .2em; box-shadow:4px 4px 0 #000}
+
+    .marquee{overflow:hidden; border-block: 1px solid var(--ink); background: #0e0e0e;}
+    .marquee-track{
+  display: flex;
+  gap: 2rem;
+  padding: 8px 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  cursor: grab;
+  animation: none; /* Disattiva animazione automatica */
+}
+.marquee-track:active {
+  cursor: grabbing;
+}
+    .marquee-track{
+      /* nascondi scrollbar mantenendo lo scroll funzionale */
+      scrollbar-width: none; /* firefox */
+    }
+    .marquee-track::-webkit-scrollbar{height:0; display:none} /* webkit */
+    .marquee-track { -ms-overflow-style: none; } /* IE 10+ */
+    .marquee b{color:var(--acid)}
+    @keyframes scroll{to{transform:translateX(-50%)}}
+
+    .cta{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap}
+    .btn{appearance:none; border:2px solid #000; background:var(--acid); color:#000; padding:12px 16px; font-weight:900; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; box-shadow:6px 6px 0 #000; transition: transform .08s ease, box-shadow .08s ease}
+    .btn:hover{transform: translate(-2px,-2px); box-shadow:10px 10px 0 #000}
+    .btn.alt{background:var(--wire)}
+    .btn.ghost{background:transparent; color:var(--ink); border-color:var(--ink)}
+    .btn.collab-small {
+      font-size: 0.7em;
+      padding: 6px 10px;
+      box-shadow: 3px 3px 0 #000;
+      border-width: 1.5px;
+      margin-top: 4px;
+    }
+
+    main{padding:28px 18px 90px; max-width:1100px; margin:auto;}
+
+    .grid{display:grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap:18px; margin-top:12px}
+    .card{background:var(--paper); border:1px solid #242424; padding:18px; box-shadow: 0 10px 40px var(--shadow); position:relative}
+    .card h3{margin:0 0 6px; text-transform:uppercase; letter-spacing:.08em; font-size:14px; color:var(--muted)}
+    .card p{margin:0; font-size:15px}
+
+    .glitch{
+      position:relative; display:inline-block;
+    }
+    .glitch::before,.glitch::after{
+      content:attr(data-text); position:absolute; inset:0; clip-path:polygon(0 2%,100% 2%,100% 18%,0 18%);
+    }
+    .glitch::before{left:-2px; text-shadow: 1px 0 var(--hot); animation:gl1 2s infinite linear alternate}
+    .glitch::after{left:2px; text-shadow: -1px 0 var(--wire); animation:gl2 1.7s infinite linear alternate}
+    @keyframes gl1{ 0%{clip-path:polygon(0 2%,100% 2%,100% 18%,0 18%)} 50%{clip-path:polygon(0 60%,100% 65%,100% 80%,0 75%)} 100%{clip-path:polygon(0 30%,100% 25%,100% 40%,0 35%)} }
+    @keyframes gl2{ 0%{clip-path:polygon(0 10%,100% 12%,100% 28%,0 26%)} 50%{clip-path:polygon(0 70%,100% 72%,100% 88%,0 86%)} 100%{clip-path:polygon(0 40%,100% 42%,100% 58%,0 56%)} }
+
+    .stickers{position:relative; margin:30px 0}
+    .stkr{position:absolute; font-weight:900; text-transform:uppercase; padding:6px 10px; transform:rotate(-6deg); box-shadow:3px 3px 0 #000}
+    .stkr.a{background:var(--hot); color:#000; top:-8px; left:6px}
+    .stkr.b{background:var(--vio); right:12%; top:26px}
+    .stkr.c{background:var(--wire); bottom:-8px; left:18%}
+    .floating{animation:float 6s ease-in-out infinite}
+    @keyframes float{ 0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-8px) rotate(-6deg)} }
+
+    /* Riquadro messaggi */
+.message-board {
+  max-width: 900px;
+  margin: 40px auto 0 auto;
+  padding: 28px 24px;
+  background: var(--paper);
+  border: 2.5px dashed var(--acid);
+  color: var(--ink);
+  font-size: 1.1em;
+  box-shadow: 0 6px 32px var(--shadow);
+  border-radius: 10px;
+  text-align: center;
+  letter-spacing: .02em;
+  animation: acid-dash 0.22s steps(2, end) infinite;
+}
+@keyframes acid-dash {
+  0%   { border-color: #8fff00; filter: brightness(1.2) drop-shadow(0 0 4px #b6ff4d); }
+  50%  { border-color: #b6ff4d; filter: brightness(1.5) drop-shadow(0 0 10px #8fff00); }
+  100% { border-color: #8fff00; filter: brightness(1.2) drop-shadow(0 0 4px #b6ff4d); }
+}
+
+    footer{border-top:1px dashed #2a2a2a; padding:26px 18px; color:#bdbdbd; text-align:center}
+    a{color:var(--acid)}
+
+    /* responsive embeds */
+    .video{position:relative; padding-top:56.25%; background:#000; border:1px solid #242424}
+    .video iframe{position:absolute; inset:0; width:100%; height:100%; border:0}
+
+    /* image gallery placeholders */
+    .shot {
+  background: linear-gradient(135deg,#1a1a1a,#0e0e0e);
+  border: 1px solid #242424;
+  aspect-ratio: 16/9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  width: 100%;
+  height: auto;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+
+    /* Banner collaboratori dentro marquee */
+    .banner-collab {
+      width: 120px;
+      height: 120px;
+      aspect-ratio: 1/1;
+      object-fit: cover;
+      margin-right: 24px;
+      border: 1px solid var(--acid);
+      background: linear-gradient(135deg,#1a1a1a,#0e0e0e);
+      box-shadow: 0 2px 8px var(--shadow);
+      border-radius: 8px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+/* background image soffusa  */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: url('BACKGROUND.jpeg') center center / cover no-repeat;
+  opacity: 0.22; /* regola per più o meno trasparenza */
+  filter: blur(2px) contrast(1.1) brightness(0.8) saturate(1.1);
+  pointer-events: none;
+}
+  /* Punk banner: 4 foto + testo esplicativo (più grande) */
+  /* non forziamo lo spanning della griglia per non rompere il layout principale */
+  .punk-wrapper { max-width: 1100px; margin: 18px auto; }
+    .punk-banner{
+      padding:18px; border:3px dashed var(--hot); background: linear-gradient(180deg, rgba(162,0,255,0.03), rgba(255,59,59,0.03)); display:flex; flex-direction:column; gap:14px; align-items:center; width:100%;
+    }
+    .punk-banner .headline{ font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:var(--acid); font-size:16px}
+    /* Usa grid per le foto: 4 colonne su desktop, 2 su mobile */
+    .punk-banner .photos{ display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; width:100%; max-width:1100px }
+    .punk-thumb{ width:100%; aspect-ratio:16/9; object-fit:cover; border:2px solid #000; box-shadow:6px 8px 0 rgba(0,0,0,.85); transform: rotate(var(--r,0deg)); transition: transform .18s ease, filter .18s ease; filter: contrast(1.05) saturate(1.08); }
+    .punk-thumb:hover{ transform: scale(1.03) rotate(0deg); filter: drop-shadow(0 12px 18px rgba(0,0,0,.65)) saturate(1.2) }
+    .punk-thumb:nth-child(1){ --r: -6deg }
+    .punk-thumb:nth-child(2){ --r: 4deg }
+    .punk-thumb:nth-child(3){ --r: -2deg }
+    .punk-thumb:nth-child(4){ --r: 3deg }
+    .punk-banner p{ max-width:72ch; text-align:center; color:var(--muted); margin:0 }
+    @media (max-width:900px){ .punk-banner .photos{ grid-template-columns: repeat(2, 1fr) } }
+    @media (max-width:520px){ .punk-banner .photos{ grid-template-columns: repeat(2, 1fr); gap:10px } .punk-banner p{max-width:90vw} }
+    /* Collab role titles - punk green fluid effect */
+    .collab-role{
+      font-weight:900; color:var(--acid); font-size:12px; letter-spacing:.12em; text-transform:uppercase; margin-bottom:6px; display:inline-block; padding:4px 8px; border-radius:4px; position:relative;
+      text-shadow: 0 0 8px rgba(143,255,0,0.18);
+      overflow:hidden;
+    }
+    .collab-role::after{ content:''; position:absolute; inset:0; background:linear-gradient(90deg, rgba(143,255,0,0.06), rgba(0,229,255,0.02), rgba(143,255,0,0.06)); mix-blend-mode:screen; transform:translateX(-100%); animation:acidFlow 3.2s linear infinite }
+    @keyframes acidFlow{ 0%{transform:translateX(-100%)} 50%{transform:translateX(0%)} 100%{transform:translateX(100%)} }
+    /* Wallet copy styles */
+    .wallet-row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0 }
+    .wallet-label{ color:var(--muted); font-weight:700; flex:0 0 auto }
+    .wallet-addr{ background:transparent; border:1px dashed #2a2a2a; padding:6px 8px; color:var(--acid); border-radius:4px; font-family:monospace; white-space:normal; word-break:break-all; overflow-wrap:anywhere; min-width:0; flex:1 1 auto }
+    #copy-btc{ flex:0 0 auto }
+    .copy-feedback{ margin-left:8px; color:var(--wire); font-weight:700; opacity:0; transform:translateY(-4px); transition:opacity .18s ease, transform .18s ease; flex:0 0 auto }
+    .copy-feedback.show{ opacity:1; transform:translateY(0) }
+    /* Android banner sizing + placeholder (aumentato verticalmente) */
+    .android-banner{ padding:28px; position:relative; overflow:visible; min-height:420px }
+    /* aumentiamo lo spazio interno in basso per lasciare area vuota (doppia rispetto a prima) */
+    .android-banner .punk-banner{ padding-bottom:140px } /* spazio interno extra in basso */
+    /* placeholder più grande in basso a destra dove inserirai il PNG */
+    .android-placeholder{ position:absolute; width:320px; height:240px; right:18px; bottom:18px; pointer-events:auto; background:transparent; border:2px dashed rgba(255,59,59,0.14); display:flex; align-items:center; justify-content:center; overflow:hidden }
+    .android-placeholder img{ width:100%; height:100%; object-fit:contain; display:block }
+    @media (max-width:900px){ .android-placeholder{ width:200px; height:150px; right:12px; bottom:12px } .android-banner .punk-banner{ padding-bottom:100px } }
+    @media (max-width:520px){ .android-banner{ min-height:360px } .android-placeholder{ width:140px; height:105px; right:8px; bottom:8px } .android-banner .punk-banner{ padding-bottom:80px } }
+  </style>
+</head>
+<body>
+  <div class="bg-noise" aria-hidden="true"></div>
+  <div class="scan" aria-hidden="true"></div>
+
+  <header>
+    <nav>
+  <span class="tag">open source</span>
+  <span class="tag">licenza MIT</span>
+  <span class="tag">progetto in sviluppo</span>
+  <img src="LOGO.png" width="90" alt="Logo">
+      <div class="lang-switch" aria-label="Language switch">
+        <a href="index.html">IT</a>
+        <a href="index_en.html">EN</a>
+        <a href="index_es.html">ES</a>
+        <a href="index_fr.html">FR</a>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1 class="title">
+      <span class="glitch" data-text="TRAVELERS_">TRAVELERS_</span>
+      <span class="sticker">GAME</span>
+    </h1>
+    <p class="mono" style="max-width:70ch; font-size:16px">Documentario interattivo punk open-world su nomadismo, occupazioni, TAZ, freeparty e manifestazioni. Sopravvivi ai margini o costruisci un'utopia collettiva.</p>
+    <div class="cta">
+  <a class="btn" href="#download">Scarica / Gioca</a>
+  <a class="btn alt" href="#features">Perché esiste?</a>
+  <a class="btn ghost" href="#contrib">Vuoi contribuire?</a>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+  <h1>Collaboratori</h1>
+    <div class="marquee-track">
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Music Artist">PRODUTTORE MUSICALE</div>
+        <img class="banner-collab" src="alkaloids.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://linktr.ee/Alkaloids432hz?fbclid=PAQ0xDSwMWy11leHRuA2FlbQIxMQABp3Y-WNSsO5ohnhWdCBaxkRe1Oq8anDDWRM5PV6NSgoCXE5jjzMEYsKFfwfpG_aem_GFO9h8GgStJbh3klkIVeDA" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Producer">CREW</div>
+        <img class="banner-collab" src="MUDOKON.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://soundcloud.com/user-676839602?ref=whatsapp-image&p=a&c=1&si=2d87d68a0c8f429ebd5ca8683514e0d3&utm_source=whatsapp&utm_medium=message&utm_campaign=social_sharing&fbclid=PAQ0xDSwMXtINleHRuA2FlbQIxMAABp0HxYfh1s1mMTD6uYMZbjugh-lLMTzx3G8d5cNczGCLeqtFz_hVEDNXe7vzO_aem_RW9Labj8asyPTFPaWUC5-w" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Crew">PRODUTTORE MUSICALE</div>
+        <img class="banner-collab" src="NETHER.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://www.instagram.com/nether.clcrew/?igsh=MWU5bnY3dGczYXJ3cA%3D%3D#" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="DJ">PRODUTTORE MUSICALE</div>
+        <img class="banner-collab" src="RUSKO.PNG" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://soundcloud.com/gennaro-punkavvita-train?fbclid=PAQ0xDSwMXtV9leHRuA2FlbQIxMQABp9VD1ZwNwz4MFJ0rwVpn77V6Sqci4v_s77lJsZGg8NpbGPi8YPBi9Mm4kmA-_aem_BiWqSuBCkGC_opKiY9os5A" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Graphic Artist">CREW</div>
+        <img class="banner-collab" src="CAVISI_LENTI.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://cavisilienti.com/" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Label">CENTRO CULTURALE</div>
+        <img class="banner-collab" src="RARE.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://www.instagram.com/r.a.r.e_bcn/?igsh=MTZ5MWozaDRtYndvdQ%3D%3D#" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Artist">PRODUTTORE MUSICALE</div>
+        <img class="banner-collab" src="ASHE.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://www.instagram.com/ashe_403/?igsh=bGI4ZXN3ZGhuM21w#" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Musician">PRODUTTORE MUSICALE</div>
+        <img class="banner-collab" src="KENAN.png" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://www.instagram.com/kenan_mdk/?igsh=ZHUwdGJmejN6ZHlh#" target="_blank">Visit</a>
+      </div>
+      <div class="collab" style="display:inline-block; text-align:center;">
+        <div class="collab-role" data-role="Collective">ARTISTA GRAFICO</div>
+        <img class="banner-collab" src="DELIRIUM CONTROL.jpg" alt="Logo collaboratore">
+        <br><a class="btn ghost collab-small" href="https://www.instagram.com/deliriumcontrol/?igsh=MWY2ZjhhdHVza2psaQ%3D%3D#" target="_blank">Visit</a>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <section id="features" class="grid">
+      <article class="card">
+        <h3>Visione</h3>
+        <p>Un gioco meno imprenditoriale e più umano: pratica, conflitto e cura. Non sali una scala del potere: inventi spazi di libertà. Questo videogioco mira a mettere in discussione tutte le forme di società e standardizzazione, con codice aperto e pubblico, gratuitamente per sempre!</p>
+      </article>
+      <article class="card">
+        <h3>Contenuti</h3>
+        <p>Nomadismo, occupazioni, TAZ, freeparty, manifestazioni. Storie corali, musica originale, estetica sporca e vivace. Il primo videogioco che affronta temi ritenuti "scomodi" dalla società.</p>
+      </article>
+      <article class="card">
+        <h3>Stato del progetto</h3>
+        <p>Attualmente sviluppato da un singolo sviluppatore (codice, modelli, animazioni). Asset della community con licenze libere e musica degli artisti migliori del circuito! Chiunque voglia partecipare e contribuire con la propria arte dovrebbe contattarmi.</p>
+      </article>
+      <article class="card">
+        <h3>Licenza</h3>
+        <p>MIT: usa, studia, modifica, condividi. Le tracce audio restano di proprietà dei rispettivi autori (crediti inclusi).</p>
+      </article>
+    </section>
+
+    <div class="stickers">
+      <span class="stkr a floating">NO GODS</span>
+      <span class="stkr b floating">NO BOSSES</span>
+      <span class="stkr c floating">MAKE SPACE</span>
+    </div>
+
+    <section class="grid" aria-label="Media del gioco">
+      <div class="card">
+        <h3>Trailer</h3>
+        <div class="video">
+          <iframe src="https://www.youtube.com/embed/zqvcSxh2MLM" allowfullscreen></iframe>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Screenshots</h3>
+        <div class="grid">
+          <img class="shot" src="opwnworld.PNG" alt="Screenshot 1 di Travelers Game">
+          <img class="shot" src="CAMION.png" alt="Screenshot 1 di Travelers Game">
+          <img class="shot" src="RAVEPARTY.png" alt="Screenshot 1 di Travelers Game">
+          <img class="shot" src="openworld2.PNG" alt="Screenshot 1 di Travelers Game">
+        </div>
+      </div>
+      <!-- Punk banner con 4 foto e testo esplicativo (rimosso temporaneamente dalla griglia per non sballare il layout) -->
+      <div class="card" id="download">
+    <h3>Scarica / Gioca</h3>
+    <ul>
+      <li><a href="https://drive.google.com/drive/folders/1zM-coS5lyheFDX6ncIBUYpnHEmMAn7PA?usp=sharing" target="_blank" rel="noopener">DEMO WINDOWS 10/11</a> file .rar</li>
+      <li><a href="https://incorrectygames.itch.io/travelers-game" target="_blank" rel="noopener">ITCH.IO</a> distributore del gioco</li>
+    </ul>
+  <h3>Per sviluppatori</h3>
+         <ul>
+            <li><a href="https://github.com/IncorrectyGames/TRAVELERS_DEV" target="_blank" rel="noopener">GIT HUB</a> TRAVELERS_FOR_DEV</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Banner punk esterno alla grid degli elementi principali (posizionato sotto la sezione media) -->
+    <div class="punk-wrapper">
+      <div class="card android-banner">
+        <div class="punk-banner">
+          <div class="headline">Versione Android</div>
+          <div class="photos" aria-hidden="false">
+            <img class="punk-thumb" src="screenshot android.jpg" alt="screenshot 1">
+            <img class="punk-thumb" src="screenshot android 2.jpg" alt="screenshot 2">
+            <img class="punk-thumb" src="screenshot android 3.jpg" alt="screenshot 3">
+            <img class="punk-thumb" src="screenshot android 4.jpg" alt="screenshot 4">
+          </div>
+          <p>Il mio obiettivo è sviluppare una versione del progetto sia per Windows che per Android. È un traguardo ambizioso, ma assolutamente raggiungibile. Attualmente sono nella fase di sviluppo e non ho ancora rilasciato una demo per Android.</p>
+          <!-- placeholder dove inserire un PNG in basso a destra -->
+          <div class="android-placeholder" aria-hidden="false">
+            <img src="PunkAndroid.png" alt="Punk Android" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section id="about" class="grid" style="margin-top:24px">
+      <article class="card">
+        <h3>MANIFESTO</h3>
+        <p>Questo gioco non è neutrale. È una testimonianza interattiva delle comunità che creano spazi temporaneamente autonomi per vivere arte, musica e solidarietà al di fuori delle regole.</p>
+      </article>
+      <article class="card">
+        <h3>Tecnologia</h3>
+        <p>Sviluppato con Unreal Engine 5. Il codice sorgente resterà aperto e tutti i modelli e i contenuti saranno pubblicati su GitHub.</p>
+      </article>
+      <article class="card">
+        <h3>Crediti</h3>
+        <p>Sviluppatore del gioco: (unico sviluppatore)</p>
+        <p>Modelli: sviluppatore & risorse online (Sketchfab, Cgtrader)</p>
+        <p>Asset 3D gratuiti: autori citati nei crediti</p>
+        <p>Animazioni: (Mixamo)</p>
+        <p>Musica: amici e crew indipendenti</p>
+      </article>
+    </section>
+
+    <section id="contrib" class="grid" style="margin-top:24px">
+      <article class="card">
+        <h3>Come contribuire</h3>
+        <p>Contatta lo sviluppatore se vuoi inviare modelli 3D o se desideri che le tue tracce siano usate come colonna sonora del gioco.</p>
+        <p>Ti va di offrirmi un caffè?</p>
+        <!-- Wallet row: address + copy button -->
+        <div class="wallet-row" style="margin-top:8px;">
+          <span class="wallet-label">₿ (bitcoin):</span>
+          <code id="btc-address" class="wallet-addr">bc1qca5c33k7at6gpsc3nw6ejq9yjntfddj2l2rf9s</code>
+          <button id="copy-btc" class="btn ghost" type="button" aria-label="Copia indirizzo Bitcoin">Copia</button>
+          <span id="copy-feedback" class="copy-feedback" aria-hidden="true">Copiato!</span>
+        </div>
+  <p style="margin-top:8px">Se non hai soldi, gioca e divertiti senza limiti o esclusioni</p>
+      </article>
+      <article class="card">
+  <h3>Roadmap</h3>
+        <ul>
+          <li>Esperienza di vita punk: free party, sfratti, manifestazioni, T.A.Z. e molto altro</li>
+          <li>Simulazione basata sull'esperienza di vita di un punk in Europa</li>
+          <li>Portare il gioco su quante più piattaforme possibili e rendere disponibile una versione mobile</li>
+          <li>Personalizza il tuo gioco per un'esperienza più personale</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>CONTATTO</h3>
+        <ul>
+          <li><a>travelers.game23@gmail.com</a></li>
+          <li><a href="https://www.instagram.com/travelers_game?igsh=MTFlMWd2aDMzYTFmZw==" target="_blank" rel="noopener">INSTAGRAM</a></li>
+        </ul>
+     </article>
+    </section>
+  </main>
+
+  <!-- Riquadro messaggi -->
+  <section class="message-board">
+  <p>I free party si basano sul concetto di accesso libero e autogestione.
+Vengono organizzati al di fuori dei circuiti commerciali, in netto contrasto con la musica mainstream e i grandi festival industriali.
+Essere “liberi” non riguarda solo l'assenza di costi, ma anche l'idea di partecipazione orizzontale e creazione collettiva.
+Do It Yourself (DIY): una filosofia che permea questi eventi, in cui ogni partecipante contribuisce attivamente.</p>
+  <p>Essere ‘liberi’ non riguarda solo l'assenza di costi, ma anche l'idea di partecipazione orizzontale e creazione collettiva.
+TAZ - Zona Autonoma Temporanea
+Il termine TAZ (Zona Autonoma Temporanea) è stato introdotto dal filosofo anarchico Hakim Bey (pseudonimo di Peter Lamborn Wilson)
+nel suo saggio del 1991.
+Si riferisce a una forma di resistenza alla struttura di controllo dello stato e del capitalismo attraverso la creazione di spazi temporanei di libertà.</p>
+  <p>Una TAZ è uno spazio fisico o simbolico in cui le regole e le strutture di controllo vengono sospese.
+Non ha lo scopo di sovvertire permanentemente il sistema, ma crea una “bolla” temporanea di libertà in cui le persone possono esprimersi senza vincoli.
+Opera su principi di autogestione, auto-organizzazione e mutuo soccorso.
+Collegamento con rave e free party:
+
+I rave e i free party sono esempi perfetti di TAZ, poiché si svolgono in luoghi effimeri e sfuggono alla regolamentazione istituzionale.
+Si dissolvono prima di poter essere assimilati o repressi, lasciando un'impronta culturale e simbolica.
+Impatto filosofico:
+
+La TAZ rappresenta un esperimento anarchico, dove creatività, collaborazione e libertà individuale sono al centro.
+È un modello per nuove forme di resistenza e organizzazione nella società contemporanea.</p>
+  </section>
+
+  <footer>
+    <small class="mono">© <span id="year"></span> TRAVELERS_GAME — MIT. Nessuna pubblicità, nessuna microtransazione.</small>
+  </footer>
+
+  <script>
+    // update year
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+  <script>
+    // Mark active language link based on current filename for a clear cyberpunk indicator
+    (function(){
+      try{
+        var links = document.querySelectorAll('.lang-switch a');
+        var file = location.pathname.split('/').pop().toLowerCase();
+        // normalize filenames like index.html -> IT
+        var map = {
+          'index.html': 'it',
+          'index_en.html': 'en',
+          'index_es.html': 'es',
+          'index_fr.html': 'fr'
+        };
+        var lang = map[file] || 'it';
+        links.forEach(function(a){
+          var txt = a.textContent.trim().toLowerCase();
+          if(txt === lang || (lang==='it' && txt === 'it')) a.classList.add('active');
+        });
+      }catch(e){/* noop */}
+    })();
+  </script>
+  <script>
+    // Copy BTC address button
+    (function(){
+      var btn = document.getElementById('copy-btc');
+      var addrEl = document.getElementById('btc-address');
+      var fb = document.getElementById('copy-feedback');
+      if(!btn || !addrEl) return;
+      var address = addrEl.textContent.trim();
+      function showFeedback(){
+        fb.classList.add('show');
+        fb.setAttribute('aria-hidden','false');
+        setTimeout(function(){ fb.classList.remove('show'); fb.setAttribute('aria-hidden','true'); }, 1500);
+      }
+      btn.addEventListener('click', function(){
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(address).then(showFeedback, function(){ fallbackCopy(address); });
+        } else {
+          fallbackCopy(address);
+        }
+      });
+      function fallbackCopy(text){
+        try{
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand('copy'); document.body.removeChild(ta);
+          if(ok) showFeedback(); else alert('Copy failed - please select and copy manually');
+        }catch(e){ alert('Copy not supported: select and copy manually.'); }
+      }
+    })();
+  </script>
+</body>
+</html>
